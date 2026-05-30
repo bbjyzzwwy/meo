@@ -483,6 +483,7 @@ let inFlight = false;
 let inFlightText: string | null = null;
 let saveAfterSync = false;
 let currentMode: 'live' | 'source' = 'live';
+let defaultCodeBlockLanguage = 'bash';
 let hasLocalModePreference = false;
 let pendingInitialText: string | null = null;
 let initialEditorMountQueued = false;
@@ -1211,6 +1212,9 @@ const handleInit = (message: any) => {
   if (typeof message.vimMode === 'boolean') {
     setVimModeEnabled(message.vimMode);
   }
+  if (typeof message.defaultCodeBlockLanguage === 'string') {
+    defaultCodeBlockLanguage = message.defaultCodeBlockLanguage;
+  }
   if (message.findOptions && typeof message.findOptions === 'object') {
     findPanelController.setSearchOptions(message.findOptions);
   }
@@ -1311,6 +1315,14 @@ window.addEventListener('message', (event) => {
 
   if (message.type === 'toggleMode') {
     applyMode(currentMode === 'live' ? 'source' : 'live', { userTriggered: true, reason: 'command' });
+    return;
+  }
+
+  if (message.type === 'insertFormat') {
+    if (editor) {
+      editor.insertFormat(message.action, message.level);
+      editor.focus();
+    }
     return;
   }
 
@@ -1422,6 +1434,11 @@ window.addEventListener('message', (event) => {
 
   if (message.type === 'vimModeChanged') {
     setVimModeEnabled(message.enabled);
+    return;
+  }
+
+  if (message.type === 'codeBlockLanguageChanged') {
+    defaultCodeBlockLanguage = message.language;
     return;
   }
 
@@ -1692,7 +1709,11 @@ headingDropdown.addEventListener('click', (event) => {
 bulletListBtn.addEventListener('click', () => handleFormatAction('bulletList'));
 numberedListBtn.addEventListener('click', () => handleFormatAction('numberedList'));
 taskBtn.addEventListener('click', () => handleFormatAction('task'));
-codeBlockBtn.addEventListener('click', () => handleFormatAction('codeBlock'));
+codeBlockBtn.addEventListener('click', () => {
+  if (!editor) return;
+  editor.insertFormat('codeBlock', defaultCodeBlockLanguage);
+  editor.focus();
+});
 quoteBtn.addEventListener('click', () => handleFormatAction('quote'));
 hrBtn.addEventListener('click', () => handleFormatAction('hr'));
 linkBtn.addEventListener('click', () => handleFormatAction('link'));

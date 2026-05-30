@@ -13,6 +13,7 @@ export const GIT_CHANGES_GUTTER_SETTING_KEY = 'gitChanges.visible';
 export const GIT_DIFF_LINE_HIGHLIGHTS_SETTING_KEY = 'gitChanges.lineHighlights';
 export const VIM_MODE_SETTING_KEY = 'vimMode.enabled';
 export const REMEMBER_POSITION_LINES_SETTING_KEY = 'rememberPosition.lines';
+export const CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY = 'codeBlock.defaultLanguage';
 export const LINE_NUMBERS_LEGACY_SETTING_KEY = 'lineNumbers.enabled';
 export const LINE_NUMBERS_LEGACY_VISIBLE_SETTING_KEY = 'lineNumbers.visibility';
 export const GIT_CHANGES_GUTTER_LEGACY_VISIBLE_SETTING_KEY = 'gitChanges.visibility';
@@ -64,6 +65,11 @@ export function getGitDiffLineHighlightsEnabled(): boolean {
 
 export function getVimModeEnabled(context: vscode.ExtensionContext): boolean {
   return getToggleSettingValue(context, VIM_MODE_SETTING_KEY, VIM_MODE_KEY, [], false);
+}
+
+export function getDefaultCodeBlockLanguage(): string {
+  const value = vscode.workspace.getConfiguration(EXTENSION_CONFIG_SECTION).get<string>(CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY, 'bash');
+  return `${value ?? ''}`.trim();
 }
 
 export function getRememberPositionLines(): number {

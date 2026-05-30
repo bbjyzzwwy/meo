@@ -3,7 +3,7 @@
   "displayName": "Markdown Editor Optimized",
   "description": "An optimized markdown editor with live editing mode for VS Code.",
   "version": "0.1.23",
-  "publisher": "vadimmelnicuk",
+  "publisher": "bbjyzzwwy",
   "private": true,
   "icon": "logo.png",
   "engines": {
@@ -86,12 +86,111 @@
         "command": "markdownEditorOptimized.exportPdf",
         "title": "Markdown Editor Optimized: Export as PDF",
         "icon": "$(file-pdf)"
+      },
+      {
+        "command": "markdownEditorOptimized.format.bold",
+        "title": "Markdown: Toggle Bold"
+      },
+      {
+        "command": "markdownEditorOptimized.format.italic",
+        "title": "Markdown: Toggle Italic"
+      },
+      {
+        "command": "markdownEditorOptimized.format.strike",
+        "title": "Markdown: Toggle Strikethrough"
+      },
+      {
+        "command": "markdownEditorOptimized.format.inlineCode",
+        "title": "Markdown: Insert Inline Code"
+      },
+      {
+        "command": "markdownEditorOptimized.format.codeBlock",
+        "title": "Markdown: Insert Code Block"
+      },
+      {
+        "command": "markdownEditorOptimized.format.link",
+        "title": "Markdown: Insert Link"
+      },
+      {
+        "command": "markdownEditorOptimized.format.table",
+        "title": "Markdown: Insert Table (3×3)"
+      },
+      {
+        "command": "markdownEditorOptimized.format.bulletList",
+        "title": "Markdown: Insert Bullet List"
+      },
+      {
+        "command": "markdownEditorOptimized.format.numberedList",
+        "title": "Markdown: Insert Numbered List"
+      },
+      {
+        "command": "markdownEditorOptimized.format.task",
+        "title": "Markdown: Insert Task List"
+      },
+      {
+        "command": "markdownEditorOptimized.format.quote",
+        "title": "Markdown: Insert Blockquote"
       }
     ],
     "keybindings": [
       {
         "command": "markdownEditorOptimized.toggleMode",
         "key": "alt+shift+m",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.bold",
+        "key": "ctrl+b",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.italic",
+        "key": "ctrl+i",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.strike",
+        "key": "ctrl+shift+x",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.inlineCode",
+        "key": "ctrl+`",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.codeBlock",
+        "key": "ctrl+shift+d",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.link",
+        "key": "ctrl+shift+k",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.table",
+        "key": "ctrl+shift+t",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.bulletList",
+        "key": "ctrl+shift+8",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.numberedList",
+        "key": "ctrl+shift+7",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.task",
+        "key": "ctrl+shift+l",
+        "when": "markdownEditorOptimized.activeEditor"
+      },
+      {
+        "command": "markdownEditorOptimized.format.quote",
+        "key": "ctrl+shift+.",
         "when": "markdownEditorOptimized.activeEditor"
       }
     ],
@@ -202,6 +301,12 @@
           "default": false,
           "order": 6,
           "description": "Enable Vim keybindings in Source mode."
+        },
+        "markdownEditorOptimized.codeBlock.defaultLanguage": {
+          "type": "string",
+          "default": "bash",
+          "order": 7,
+          "description": "Default language for inserted code blocks (e.g. bash, python, javascript). Leave empty for no language tag."
         },
         "markdownEditorOptimized.rememberPosition.lines": {
           "type": "number",

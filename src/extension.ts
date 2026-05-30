@@ -36,6 +36,7 @@ import {
   LINE_NUMBERS_SETTING_KEY,
   OUTLINE_VISIBLE_KEY,
   VIM_MODE_SETTING_KEY,
+  CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY,
   syncEditorAssociations,
   type ExportHtmlImageMode,
   getExportHtmlImageMode,
@@ -43,6 +44,7 @@ import {
   getExportPdfBrowserPath,
   getGitChangesGutterEnabled,
   getGitDiffLineHighlightsEnabled,
+  getDefaultCodeBlockLanguage,
   getLineNumbersEnabled,
   getOutlinePosition,
   getOutlineVisible,
@@ -435,6 +437,35 @@ export function activate(context: vscode.ExtensionContext): void {
       await provider.exportActiveDocument('pdf');
     })
   );
+
+  const FORMAT_COMMANDS = [
+    { suffix: 'bold',         action: 'bold' },
+    { suffix: 'italic',       action: 'italic' },
+    { suffix: 'strike',       action: 'strike' },
+    { suffix: 'inlineCode',   action: 'inlineCode' },
+    { suffix: 'link',         action: 'link' },
+    { suffix: 'table',        action: 'table', level: { cols: 3, rows: 3 } as const },
+    { suffix: 'bulletList',   action: 'bulletList' },
+    { suffix: 'numberedList', action: 'numberedList' },
+    { suffix: 'task',         action: 'task' },
+    { suffix: 'quote',        action: 'quote' },
+  ];
+
+  for (const cmd of FORMAT_COMMANDS) {
+    const level = 'level' in cmd ? cmd.level : undefined;
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        `markdownEditorOptimized.format.${cmd.suffix}`,
+        () => provider.insertFormatInActiveEditor(cmd.action, level)
+      )
+    );
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('markdownEditorOptimized.format.codeBlock', () =>
+      provider.insertFormatInActiveEditor('codeBlock', getDefaultCodeBlockLanguage())
+    )
+  );
 }
 
 class MarkdownWebviewProvider implements vscode.CustomTextEditorProvider {
@@ -534,6 +565,10 @@ class MarkdownWebviewProvider implements vscode.CustomTextEditorProvider {
       this.broadcast({ type: 'vimModeChanged', enabled: getVimModeEnabled(this.context) });
     }
 
+    if (event.affectsConfiguration(`${EXTENSION_CONFIG_SECTION}.${CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY}`)) {
+      this.broadcast({ type: 'codeBlockLanguageChanged', language: getDefaultCodeBlockLanguage() });
+    }
+
     if (event.affectsConfiguration(`${EXTENSION_CONFIG_SECTION}.outline.position`)) {
       this.broadcast({ type: 'outlinePositionChanged', position: getOutlinePosition() });
     }
@@ -558,6 +593,22 @@ class MarkdownWebviewProvider implements vscode.CustomTextEditorProvider {
     this.lastActivePanel = session.panel;
     await session.ensureInitDelivered();
     await session.panel.webview.postMessage({ type: 'toggleMode' });
+  }
+
+  async insertFormatInActiveEditor(
+    action: string,
+    level?: number | { cols: number; rows: number }
+  ): Promise<void> {
+    const session = this.getActiveSession();
+    if (!session) {
+      return;
+    }
+    await session.ensureInitDelivered();
+    const message: Record<string, unknown> = { type: 'insertFormat', action };
+    if (level !== undefined) {
+      message.level = level;
+    }
+    await session.panel.webview.postMessage(message);
   }
 
   async resolveCustomTextEditor(

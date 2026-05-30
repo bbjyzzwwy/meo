@@ -1616,7 +1616,7 @@ export function createEditor({
           insert = '- [ ] ';
           break;
         case 'codeBlock':
-          return insertCodeBlock(view, selection);
+          return insertCodeBlock(view, selection, typeof level === 'string' ? level : undefined);
         case 'inlineCode':
           return insertInlineCode(view, inlineSelection());
         case 'kbd':

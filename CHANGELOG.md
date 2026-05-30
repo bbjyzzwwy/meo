@@ -1,5 +1,9 @@
 # Markdown Editor Optimized (MEO)
 ---
+## 0.1.23 (fork)
+- 新增常用格式化快捷键（Ctrl+B 粗体、Ctrl+I 斜体、Ctrl+Shift+D 代码块、Ctrl+Shift+K 链接、Ctrl+Shift+T 表格等）
+- 新增 `markdownEditorOptimized.codeBlock.defaultLanguage` 设置项，可配置插入代码块时的默认语言（默认值：bash）
+
 ## 0.1.23
 - Added inline footnote support with decorations and styling
 - Enhanced full list line decorations and currency vs latex rendering

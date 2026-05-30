@@ -12,3 +12,5 @@ assets/
 .claude/
 AGENTS.md
 features.md
+DEV.md
+README-dev.md

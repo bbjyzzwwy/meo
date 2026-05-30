@@ -501,25 +501,28 @@ export function resolveLiveCodeLanguage(info: string | null | undefined): any {
   return languageMap[normalized] ?? null;
 }
 
-export function insertCodeBlock(view: EditorView, selection: { from: number; to: number; empty?: boolean }): void {
+export function insertCodeBlock(view: EditorView, selection: { from: number; to: number; empty?: boolean }, language?: string): void {
   const { state } = view;
   const line = state.doc.lineAt(selection.from);
   const lineText = state.doc.sliceString(line.from, line.to);
   const leadingWhitespace = /^(\s*)/.exec(lineText)![1];
+  const langTag = language ? language : '';
+  const openFence = `\`\`\`${langTag}`;
+  const openFenceLen = openFence.length + 1; // +1 for the newline after the fence
 
   if (!selection.empty) {
     const selectedText = state.doc.sliceString(selection.from, selection.to);
-    const insert = `\n${leadingWhitespace}\`\`\`\n${selectedText}\n${leadingWhitespace}\`\`\`\n`;
+    const insert = `\n${leadingWhitespace}${openFence}\n${selectedText}\n${leadingWhitespace}\`\`\`\n`;
     view.dispatch({
       changes: { from: selection.from, to: selection.to, insert },
-      selection: { anchor: selection.from + leadingWhitespace.length + 4 }
+      selection: { anchor: selection.from + leadingWhitespace.length + openFenceLen }
     });
     return;
   }
 
   const contentWithoutLeadingWhitespace = lineText.slice(leadingWhitespace.length);
-  const insert = `${leadingWhitespace}\`\`\`\n${contentWithoutLeadingWhitespace}\n${leadingWhitespace}\`\`\`\n`;
-  const cursorPos = line.from + leadingWhitespace.length + 4;
+  const insert = `${leadingWhitespace}${openFence}\n${contentWithoutLeadingWhitespace}\n${leadingWhitespace}\`\`\`\n`;
+  const cursorPos = line.from + leadingWhitespace.length + openFenceLen;
   view.dispatch({
     changes: { from: line.from, to: line.to, insert },
     selection: { anchor: cursorPos }
