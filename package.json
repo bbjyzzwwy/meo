@@ -2,7 +2,7 @@
   "name": "meo",
   "displayName": "Markdown Editor Optimized",
   "description": "An optimized markdown editor with live editing mode for VS Code.",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "publisher": "bbjyzzwwy",
   "private": true,
   "icon": "logo.png",
@@ -24,7 +24,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/vadimmelnicuk/meo.git"
+    "url": "https://github.com/bbjyzzwwy/meo.git"
   },
   "main": "./dist/extension.js",
   "activationEvents": [
