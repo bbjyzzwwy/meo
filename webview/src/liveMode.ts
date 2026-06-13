@@ -64,6 +64,13 @@ import {
   type LatexMathRange,
   type LatexMathMode
 } from './helpers/math';
+import {
+  addHtmlBlockDecoration,
+  parseInlineHtmlTag,
+  getHtmlTagWidget,
+  sanitizeHtml as sanitizeHtmlBlock,
+  isHtmlRenderEnabled,
+} from './helpers/htmlBlocks';
 
 const markerDeco = Decoration.mark({ class: 'meo-md-marker' });
 const activeLineMarkerDeco = Decoration.mark({ class: 'meo-md-marker-active' });
@@ -808,6 +815,31 @@ function addAutolinkDecorations(builder, state, node) {
   addTrimmedUrlLinkMark(builder, urlNode.from, urlNode.to, rawUrl, href);
 }
 
+function addHtmlTagDecoration(builder, state, node, activeLines) {
+  if (!isHtmlRenderEnabled()) {
+    return;
+  }
+  const line = state.doc.lineAt(node.from);
+  if (activeLines.has(line.number)) {
+    return;
+  }
+  if (overlapsSelection(state, node.from, node.to)) {
+    return;
+  }
+  const rawText = state.doc.sliceString(node.from, node.to);
+  const parsed = parseInlineHtmlTag(rawText);
+  if (!parsed) {
+    return;
+  }
+  const widget = getHtmlTagWidget(parsed.tagName, parsed.attributes, parsed.content);
+  builder.push(
+    Decoration.replace({
+      widget,
+      inclusive: false,
+    }).range(node.from, node.to),
+  );
+}
+
 function addWikiLinkDecorations(builder, state, node, activeLines) {
   const wikiLink = parseWikiLinkData(state, node);
   if (!wikiLink) {
@@ -1208,6 +1240,12 @@ function buildDecorations(state) {
         addCopyCodeButton(ranges, state, node.from, node.to);
       }
 
+      if (node.name === 'HTMLBlock') {
+        if (addHtmlBlockDecoration({ state, node, activeLines, builder: ranges })) {
+          return;
+        }
+      }
+
       if (node.name === 'Emphasis') {
         addRange(ranges, node.from, node.to, inlineStyleDecos.em);
       } else if (node.name === 'StrongEmphasis') {
@@ -1293,6 +1331,9 @@ function buildDecorations(state) {
           const rawUrl = state.doc.sliceString(node.from, node.to);
           addTrimmedUrlLinkMark(ranges, node.from, node.to, rawUrl, href);
         }
+      } else if (node.name === 'HTMLTag') {
+        addHtmlTagDecoration(ranges, state, node, activeLines);
+        return;
       } else if (node.name === 'Image') {
         const line = state.doc.lineAt(node.from);
         const isActiveLine = activeLines.has(line.number);

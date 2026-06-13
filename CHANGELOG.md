@@ -3,6 +3,9 @@
 ## 0.1.23 (fork)
 - 新增常用格式化快捷键（Ctrl+B 粗体、Ctrl+I 斜体、Ctrl+Shift+D 代码块、Ctrl+Shift+K 链接、Ctrl+Shift+T 表格等）
 - 新增 `markdownEditorOptimized.codeBlock.defaultLanguage` 设置项，可配置插入代码块时的默认语言（默认值：bash）
+- 新增 HTML 内容渲染功能，在 Live 模式下可将 HTML 块和行内 HTML 标签渲染为可视化元素
+- 新增 `markdownEditorOptimized.html.renderEnabled` 设置项，可开关 HTML 渲染（默认启用）
+- 使用 DOMPurify 对渲染的 HTML 进行安全消毒，防止 XSS 攻击
 
 ## 0.1.23
 - Added inline footnote support with decorations and styling

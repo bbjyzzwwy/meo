@@ -6,10 +6,12 @@ import {
   LINE_NUMBERS_SETTING_KEY,
   GIT_CHANGES_GUTTER_SETTING_KEY,
   CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY,
+  HTML_RENDER_ENABLED_SETTING_KEY,
   getLineNumbersEnabled,
   getGitChangesGutterEnabled,
   getGitDiffLineHighlightsEnabled,
   getDefaultCodeBlockLanguage,
+  getHtmlRenderEnabled,
   getOutlinePosition,
   getOutlineVisible,
   getRememberPositionLines,
@@ -41,6 +43,7 @@ type InitMessage = {
   gitChangesGutter: boolean;
   gitDiffLineHighlights: boolean;
   vimMode: boolean;
+  htmlRenderEnabled: boolean;
   defaultCodeBlockLanguage: string;
   findOptions: FindOptions;
   outlinePosition: OutlinePosition;
@@ -464,6 +467,7 @@ export function createPanelSessionController(params: PanelSessionControllerParam
       gitChangesGutter: getGitChangesGutterEnabled(context),
       gitDiffLineHighlights: getGitDiffLineHighlightsEnabled(),
       vimMode: getVimModeEnabled(context),
+      htmlRenderEnabled: getHtmlRenderEnabled(),
       defaultCodeBlockLanguage: getDefaultCodeBlockLanguage(),
       findOptions: getFindOptions(),
       outlinePosition: getOutlinePosition(),

@@ -37,6 +37,7 @@ import {
   OUTLINE_VISIBLE_KEY,
   VIM_MODE_SETTING_KEY,
   CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY,
+  HTML_RENDER_ENABLED_SETTING_KEY,
   syncEditorAssociations,
   type ExportHtmlImageMode,
   getExportHtmlImageMode,
@@ -45,6 +46,7 @@ import {
   getGitChangesGutterEnabled,
   getGitDiffLineHighlightsEnabled,
   getDefaultCodeBlockLanguage,
+  getHtmlRenderEnabled,
   getLineNumbersEnabled,
   getOutlinePosition,
   getOutlineVisible,
@@ -567,6 +569,10 @@ class MarkdownWebviewProvider implements vscode.CustomTextEditorProvider {
 
     if (event.affectsConfiguration(`${EXTENSION_CONFIG_SECTION}.${CODE_BLOCK_DEFAULT_LANGUAGE_SETTING_KEY}`)) {
       this.broadcast({ type: 'codeBlockLanguageChanged', language: getDefaultCodeBlockLanguage() });
+    }
+
+    if (event.affectsConfiguration(`${EXTENSION_CONFIG_SECTION}.${HTML_RENDER_ENABLED_SETTING_KEY}`)) {
+      this.broadcast({ type: 'htmlRenderEnabledChanged', enabled: getHtmlRenderEnabled() });
     }
 
     if (event.affectsConfiguration(`${EXTENSION_CONFIG_SECTION}.outline.position`)) {

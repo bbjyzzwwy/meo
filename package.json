@@ -308,6 +308,12 @@
           "order": 7,
           "description": "Default language for inserted code blocks (e.g. bash, python, javascript). Leave empty for no language tag."
         },
+        "markdownEditorOptimized.html.renderEnabled": {
+          "type": "boolean",
+          "default": true,
+          "order": 7,
+          "description": "Render HTML content in live mode. When enabled, HTML blocks and inline HTML tags are rendered visually. When disabled, HTML source is shown as text."
+        },
         "markdownEditorOptimized.rememberPosition.lines": {
           "type": "number",
           "default": 100,

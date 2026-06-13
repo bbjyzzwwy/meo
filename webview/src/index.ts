@@ -11,6 +11,7 @@ import { isPrimaryModifier, isShortcutKey, normalizeEol, handleEditorShortcut, t
 import { createFindPanel, createFindPanelController, type FindPanelController } from './helpers/findPanel';
 import { createSelectionMenu, createSelectionMenuController, type SelectionMenuController } from './helpers/selectionMenu';
 import { createExportHandler, type ExportHandlerContext } from './helpers/export';
+import { setHtmlRenderEnabled } from './helpers/htmlBlocks';
 
 type CreateEditorFactory = (typeof import('./editor'))['createEditor'];
 
@@ -1215,6 +1216,9 @@ const handleInit = (message: any) => {
   if (typeof message.defaultCodeBlockLanguage === 'string') {
     defaultCodeBlockLanguage = message.defaultCodeBlockLanguage;
   }
+  if (typeof message.htmlRenderEnabled === 'boolean') {
+    setHtmlRenderEnabled(message.htmlRenderEnabled);
+  }
   if (message.findOptions && typeof message.findOptions === 'object') {
     findPanelController.setSearchOptions(message.findOptions);
   }
@@ -1439,6 +1443,11 @@ window.addEventListener('message', (event) => {
 
   if (message.type === 'codeBlockLanguageChanged') {
     defaultCodeBlockLanguage = message.language;
+    return;
+  }
+
+  if (message.type === 'htmlRenderEnabledChanged') {
+    setHtmlRenderEnabled(message.enabled);
     return;
   }
 

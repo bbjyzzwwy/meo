@@ -2589,3 +2589,125 @@ body {
 .cm-editor.meo-mode-live .cm-line.meo-md-alert .meo-md-alert-label-active {
   color: var(--meo-color-base05) !important;
 }
+
+/* ==========================================================================
+   Rendered HTML blocks
+   ========================================================================== */
+
+.cm-editor .meo-md-html-block {
+  padding: 0.25em 0;
+  max-width: 100%;
+  overflow-x: auto;
+  word-wrap: break-word;
+}
+
+.cm-editor .meo-md-html-block > *:first-child {
+  margin-top: 0;
+}
+
+.cm-editor .meo-md-html-block > *:last-child {
+  margin-bottom: 0;
+}
+
+/* HTML block tables */
+.cm-editor .meo-md-html-block table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.25em 0;
+}
+
+.cm-editor .meo-md-html-block th,
+.cm-editor .meo-md-html-block td {
+  border: 1px solid var(--vscode-panel-border);
+  padding: 0.25em 0.75ch;
+  text-align: left;
+}
+
+.cm-editor .meo-md-html-block th {
+  background-color: var(--vscode-sideBar-background);
+  font-weight: 600;
+}
+
+/* HTML block images */
+.cm-editor .meo-md-html-block img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* HTML block video/audio */
+.cm-editor .meo-md-html-block video,
+.cm-editor .meo-md-html-block audio {
+  max-width: 100%;
+}
+
+/* HTML block iframes */
+.cm-editor .meo-md-html-block iframe {
+  max-width: 100%;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+/* HTML block details/summary */
+.cm-editor .meo-md-html-block details {
+  margin: 0.25em 0;
+}
+
+.cm-editor .meo-md-html-block summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Inline HTML tags */
+.cm-editor .meo-md-html-inline {
+  display: inline;
+}
+
+/* Preserve inline styling from sanitized HTML elements */
+.cm-editor .meo-md-html-inline sup {
+  vertical-align: super;
+  font-size: smaller;
+}
+
+.cm-editor .meo-md-html-inline sub {
+  vertical-align: sub;
+  font-size: smaller;
+}
+
+.cm-editor .meo-md-html-inline mark {
+  background-color: var(--vscode-editor-findMatchHighlightBackground);
+  color: inherit;
+}
+
+.cm-editor .meo-md-html-inline ins {
+  text-decoration: underline;
+}
+
+.cm-editor .meo-md-html-inline del {
+  text-decoration: line-through;
+}
+
+.cm-editor .meo-md-html-inline small {
+  font-size: smaller;
+}
+
+.cm-editor .meo-md-html-inline abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+.cm-editor .meo-md-html-inline code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  background-color: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.15));
+  padding: 0.05em 0.3em;
+  border-radius: 3px;
+}
+
+/* Make rendered block links look like links */
+.cm-editor .meo-md-html-block a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cm-editor .meo-md-html-block a:hover {
+  text-decoration: underline;
+}
