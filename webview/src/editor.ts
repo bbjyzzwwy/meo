@@ -80,6 +80,9 @@ type MarkerReplacementContext = {
   isExistingTask: boolean;
 };
 
+// Grace period after `compositionend` before the editor is considered safe to update again.
+const COMPOSITION_SETTLE_MS = 80;
+
 const setSearchQueryEffect = StateEffect.define<SearchQueryState>();
 const refreshDecorationsEffect = StateEffect.define();
 const searchMatchMark = Decoration.mark({ class: 'meo-search-match' });
@@ -150,6 +153,7 @@ export function createEditor({
   onRequestGitBlame,
   onOpenGitRevisionForLine,
   onOpenGitWorktreeForLine,
+  onCompositionEnd,
   initialMode = 'source',
   initialTopLine = null,
   initialTopLineOffset = 0,
@@ -187,6 +191,14 @@ export function createEditor({
   let gitBlameHover = null;
   let gitDiffOverviewRuler = null;
   let sourceLinkHoverPointerActive = false;
+  // IME composition state. Any dispatch into the view while an IME composition is live
+  // tears down the composing DOM node, which aborts the composition and leaves the raw
+  // keystrokes (pinyin/kana) in the document. Host-driven updates must wait it out.
+  let composing = false;
+  let compositionSettleTimer = null;
+  let onCompositionStart = null;
+  let onCompositionUpdate = null;
+  let onCompositionEndEvent = null;
   const normalizeTopLineOffset = (value) => {
     if (!Number.isFinite(value)) {
       return 0;
@@ -1352,6 +1364,34 @@ export function createEditor({
     onViewportChange?.();
   };
   view.scrollDOM.addEventListener('scroll', onScroll, { passive: true });
+  const clearCompositionSettleTimer = () => {
+    if (compositionSettleTimer !== null) {
+      window.clearTimeout(compositionSettleTimer);
+      compositionSettleTimer = null;
+    }
+  };
+  onCompositionStart = () => {
+    clearCompositionSettleTimer();
+    composing = true;
+  };
+  onCompositionUpdate = () => {
+    clearCompositionSettleTimer();
+    composing = true;
+  };
+  onCompositionEndEvent = () => {
+    clearCompositionSettleTimer();
+    // IMEs commit a segment and immediately start the next one while typing a phrase, and
+    // Chromium still emits input/keyup after compositionend. Stay "composing" briefly so a
+    // deferred update cannot land inside that gap.
+    compositionSettleTimer = window.setTimeout(() => {
+      compositionSettleTimer = null;
+      composing = false;
+      onCompositionEnd?.();
+    }, COMPOSITION_SETTLE_MS);
+  };
+  view.contentDOM.addEventListener('compositionstart', onCompositionStart);
+  view.contentDOM.addEventListener('compositionupdate', onCompositionUpdate);
+  view.contentDOM.addEventListener('compositionend', onCompositionEndEvent);
   if (typeof onRequestGitBlame === 'function') {
     gitBlameHover = createGitBlameHoverController({
       view,
@@ -1466,6 +1506,9 @@ export function createEditor({
     hasFocus() {
       return view.hasFocus;
     },
+    isComposing() {
+      return composing || view.composing;
+    },
     focus() {
       const activeTableInput = getActiveTableInput();
       if (activeTableInput) {
@@ -1495,6 +1538,23 @@ export function createEditor({
         view.dom.removeEventListener('meo-table-selection-change', onTableSelectionChange);
         onTableSelectionChange = null;
       }
+      if (compositionSettleTimer !== null) {
+        window.clearTimeout(compositionSettleTimer);
+        compositionSettleTimer = null;
+      }
+      if (onCompositionStart) {
+        view.contentDOM.removeEventListener('compositionstart', onCompositionStart);
+        onCompositionStart = null;
+      }
+      if (onCompositionUpdate) {
+        view.contentDOM.removeEventListener('compositionupdate', onCompositionUpdate);
+        onCompositionUpdate = null;
+      }
+      if (onCompositionEndEvent) {
+        view.contentDOM.removeEventListener('compositionend', onCompositionEndEvent);
+        onCompositionEndEvent = null;
+      }
+      composing = false;
       if (capturedPointerId !== null) {
         releasePointerCaptureIfHeld(capturedPointerId);
         capturedPointerId = null;

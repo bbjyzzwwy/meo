@@ -343,7 +343,10 @@ export function createPanelSessionController(params: PanelSessionControllerParam
   let applyQueue: Promise<void> = Promise.resolve();
   let webviewReady = false;
   let initDelivered = false;
-  let isApplyingOwnChange = false;
+  // Depth, not a flag: overlapping webview operations (an apply racing a save) must not clear
+  // the guard for each other while one of them is still editing the document.
+  let ownChangeDepth = 0;
+  const isApplyingOwnChange = (): boolean => ownChangeDepth > 0;
   let gitRefreshRunning = false;
   let gitRefreshPending = false;
   let gitRefreshPendingForcePost = false;
@@ -927,26 +930,26 @@ export function createPanelSessionController(params: PanelSessionControllerParam
         return;
       case 'applyChanges':
         agentReviewHandoff.noteRecentMEOOwnedFileChangeForUri(document.uri);
-        isApplyingOwnChange = true;
+        ownChangeDepth++;
         try {
           await enqueue(async () => {
             await applyDocumentChanges(document, raw, sendDocChanged, sendApplied);
           });
         } finally {
-          isApplyingOwnChange = false;
+          ownChangeDepth--;
         }
         return;
       case 'draftChanged':
         pendingDraftText = raw.text;
         return;
       case 'saveDocument':
-        isApplyingOwnChange = true;
+        ownChangeDepth++;
         try {
           await enqueue(async () => {
             await document.save();
           });
         } finally {
-          isApplyingOwnChange = false;
+          ownChangeDepth--;
         }
         return;
       case 'saveImageFromClipboard': {
@@ -971,7 +974,7 @@ export function createPanelSessionController(params: PanelSessionControllerParam
       return;
     }
 
-    if (isApplyingOwnChange) {
+    if (isApplyingOwnChange()) {
       return;
     }
 
@@ -989,6 +992,12 @@ export function createPanelSessionController(params: PanelSessionControllerParam
 
   const textEditorSelectionSubscription = vscode.window.onDidChangeTextEditorSelection((event) => {
     if (!isTextEditorForDocument(event.textEditor)) {
+      return;
+    }
+    // A webview edit rewrites the document, which shifts the selection of any text editor still
+    // open on it. Reflecting that back would yank the webview cursor away from where the user
+    // is typing, so only follow selections the webview did not cause.
+    if (isApplyingOwnChange()) {
       return;
     }
     runBackground(sendRevealSelectionForEditor(event.textEditor), 'sendRevealSelectionForEditor.selection');

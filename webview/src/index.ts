@@ -838,8 +838,97 @@ const openGitWorktreeForLine = ({ lineNumber }: { lineNumber: number }) => {
   gitClient?.openWorktreeForLine({ lineNumber });
 };
 
-const flushChanges = () => {
+type DeferredHostUpdateKey = 'docChanged' | 'refreshDecorations' | 'gitBaseline' | 'revealSelection' | 'focusEditor';
+
+// Drained in this order so a document sync always lands before the selection/scroll
+// updates that are expressed in offsets of that document.
+const DEFERRED_HOST_UPDATE_ORDER: DeferredHostUpdateKey[] = [
+  'docChanged',
+  'refreshDecorations',
+  'gitBaseline',
+  'revealSelection',
+  'focusEditor'
+];
+
+const COMPOSITION_WATCHDOG_INTERVAL_MS = 250;
+
+const deferredHostUpdates = new Map<DeferredHostUpdateKey, () => void>();
+let compositionWatchdog: number | null = null;
+
+const isComposing = (): boolean => editor?.isComposing?.() === true;
+
+// Dispatching into CodeMirror while an IME composition is live tears down the composing DOM
+// node: the composition aborts and the raw keystrokes (pinyin/kana) stay in the document,
+// with the cursor remapped somewhere else. Host-driven updates therefore wait for the
+// composition to settle. A newer update of the same kind supersedes the parked one.
+const runWhenNotComposing = (key: DeferredHostUpdateKey, run: () => void): void => {
+  if (!isComposing()) {
+    deferredHostUpdates.delete(key);
+    run();
+    return;
+  }
+  deferredHostUpdates.set(key, run);
+  startCompositionWatchdog();
+};
+
+const flushDeferredHostUpdates = (): void => {
+  if (deferredHostUpdates.size === 0) {
+    return;
+  }
+
+  for (const key of DEFERRED_HOST_UPDATE_ORDER) {
+    const run = deferredHostUpdates.get(key);
+    if (!run) {
+      continue;
+    }
+    deferredHostUpdates.delete(key);
+    withMessageErrorBoundary(`deferredHostUpdate.${key}`, run);
+  }
+  deferredHostUpdates.clear();
+};
+
+// Safety net for a composition that never reports its end (editor swapped out, an IME that
+// swallows compositionend): poll until the editor is idle and then release the parked work.
+const startCompositionWatchdog = (): void => {
+  if (compositionWatchdog !== null) {
+    return;
+  }
+  compositionWatchdog = window.setInterval(() => {
+    if (isComposing()) {
+      return;
+    }
+    stopCompositionWatchdog();
+    handleCompositionEnd();
+  }, COMPOSITION_WATCHDOG_INTERVAL_MS);
+};
+
+const stopCompositionWatchdog = (): void => {
+  if (compositionWatchdog === null) {
+    return;
+  }
+  window.clearInterval(compositionWatchdog);
+  compositionWatchdog = null;
+};
+
+const handleCompositionEnd = (): void => {
+  stopCompositionWatchdog();
+  flushDeferredHostUpdates();
+  flushChanges();
+  const currentText = getCurrentEditorText();
+  scheduleWikiLinkStatusRefresh(currentText);
+  scheduleLocalLinkStatusRefresh(currentText);
+};
+
+const flushChanges = ({ force = false }: { force?: boolean } = {}) => {
   if (!editor || inFlight || pendingText === null || normalizeEol(pendingText) === syncedText) {
+    return;
+  }
+
+  // Syncing mid-composition invites a host round-trip (echo, rejection, selection bounce)
+  // that would land while the IME is still composing. Saving and exporting still force it
+  // through: those are explicit user actions and their replies are deferral-safe.
+  if (!force && isComposing()) {
+    startCompositionWatchdog();
     return;
   }
 
@@ -858,8 +947,6 @@ const flushChanges = () => {
 
   inFlight = true;
   inFlightText = nextText;
-  syncedText = normalizeEol(nextText);
-  documentVersion++;
   syncPendingDraftState();
   vscode.postMessage(message);
 };
@@ -870,7 +957,7 @@ const flushPendingChangesNow = () => {
     pendingDebounce = null;
   }
 
-  flushChanges();
+  flushChanges({ force: true });
 };
 
 const maybeSaveAfterSync = () => {
@@ -883,7 +970,7 @@ const maybeSaveAfterSync = () => {
   }
 
   if (pendingText !== null && normalizeEol(pendingText) !== syncedText) {
-    flushChanges();
+    flushChanges({ force: true });
     return;
   }
 
@@ -977,8 +1064,12 @@ const queueChanges = (nextText: string) => {
   if (outlineController.isVisible()) {
     outlineController.refresh();
   }
-  scheduleWikiLinkStatusRefresh(nextText);
-  scheduleLocalLinkStatusRefresh(nextText);
+  // Link resolution is a host round-trip whose answer refreshes decorations; while composing
+  // it is deferred anyway, so hold the request until the composition settles.
+  if (!isComposing()) {
+    scheduleWikiLinkStatusRefresh(nextText);
+    scheduleLocalLinkStatusRefresh(nextText);
+  }
   findPanelController.updateFindStatusSummary();
 };
 
@@ -1099,7 +1190,8 @@ const mountInitialEditor = async () => {
       onViewportChange: () => scheduleViewPositionCapture(),
       onRequestGitBlame: requestGitBlameForLine,
       onOpenGitRevisionForLine: openGitRevisionForLine,
-      onOpenGitWorktreeForLine: openGitWorktreeForLine
+      onOpenGitWorktreeForLine: openGitWorktreeForLine,
+      onCompositionEnd: handleCompositionEnd
     });
     gitClient?.applyBaselineToEditor(editor);
     syncGitDiffLineHighlights();
@@ -1243,7 +1335,7 @@ const exportHandlerContext: ExportHandlerContext = {
   get syncedText() { return syncedText; },
   get pendingDebounce() { return pendingDebounce; },
   get inFlight() { return inFlight; },
-  flushChanges,
+  flushChanges: () => flushChanges({ force: true }),
   normalizeEol,
   setPendingDebounce: (value) => { pendingDebounce = value; }
 };
@@ -1258,13 +1350,7 @@ const withMessageErrorBoundary = (context: string, action: () => void): void => 
   }
 };
 
-window.addEventListener('message', (event) => {
-  const message = event.data;
-
-  if (!message || typeof message !== 'object') {
-    return;
-  }
-
+function handleExtensionMessage(message: any): void {
   if (message.type === 'init') {
     acknowledgeReadyHandshake();
     withMessageErrorBoundary('init handler', () => {
@@ -1308,12 +1394,12 @@ window.addEventListener('message', (event) => {
   }
 
   if (message.type === 'revealSelection') {
-    applyRevealSelectionFromHost(message);
+    runWhenNotComposing('revealSelection', () => applyRevealSelectionFromHost(message));
     return;
   }
 
   if (message.type === 'focusEditor') {
-    focusEditorFromHost();
+    runWhenNotComposing('focusEditor', () => focusEditorFromHost());
     return;
   }
 
@@ -1339,6 +1425,14 @@ window.addEventListener('message', (event) => {
   }
 
   if (message.type === 'docChanged' && editor) {
+    // The whole branch is parked, not just the editor write: version/pending bookkeeping has
+    // to stay in step with the text the editor actually holds.
+    if (isComposing()) {
+      deferredHostUpdates.set('docChanged', () => handleExtensionMessage(message));
+      startCompositionWatchdog();
+      return;
+    }
+
     clearGitBlameCache();
     const incomingText = normalizeEol(message.text);
     const currentText = normalizeEol(editor.getText());
@@ -1380,6 +1474,22 @@ window.addEventListener('message', (event) => {
       pendingText = null;
       inFlight = false;
       inFlightText = null;
+      flushChanges();
+      maybeSaveAfterSync();
+      syncPendingDraftState();
+      return;
+    }
+
+    // The host is re-announcing the base text we already synced from - it rejected our edit
+    // (its document.version had moved on) or echoed the pre-edit state. Local edits are still
+    // the newer ones, so retry the flush against the corrected version instead of overwriting
+    // whatever the user has typed since.
+    if (incomingText === syncedText && (inFlight || pendingNormalized !== null)) {
+      if (inFlight) {
+        pendingText = pendingText ?? inFlightText;
+        inFlight = false;
+        inFlightText = null;
+      }
       flushChanges();
       maybeSaveAfterSync();
       syncPendingDraftState();
@@ -1468,7 +1578,7 @@ window.addEventListener('message', (event) => {
     if (typeof message.version === 'number' && message.version < documentVersion) {
       return;
     }
-    gitClient?.handleMessage(message, { editor });
+    runWhenNotComposing('gitBaseline', () => gitClient?.handleMessage(message, { editor }));
     return;
   }
 
@@ -1489,14 +1599,14 @@ window.addEventListener('message', (event) => {
 
   if (message.type === 'resolvedWikiLinks') {
     if (handleResolvedWikiLinks(message)) {
-      editor?.refreshDecorations();
+      runWhenNotComposing('refreshDecorations', () => editor?.refreshDecorations());
     }
     return;
   }
 
   if (message.type === 'resolvedLocalLinks') {
     if (handleResolvedLocalLinks(message)) {
-      editor?.refreshDecorations();
+      runWhenNotComposing('refreshDecorations', () => editor?.refreshDecorations());
     }
     return;
   }
@@ -1512,6 +1622,16 @@ window.addEventListener('message', (event) => {
     }
     void exportHandler.handleExportSnapshotRequest(message.requestId);
   }
+}
+
+window.addEventListener('message', (event) => {
+  const message = event.data;
+
+  if (!message || typeof message !== 'object') {
+    return;
+  }
+
+  handleExtensionMessage(message);
 });
 
 window.addEventListener('keydown', (event) => {
