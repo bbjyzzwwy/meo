@@ -1,5 +1,10 @@
 # Markdown Editor Optimized (MEO)
 ---
+## 0.1.25
+- 修复 SSH 远程开发时中文/日文等输入法组字被打断、拼音残留、光标跳行的问题：主机发来的文档同步、光标定位、装饰刷新等更新现在会等待输入法组字结束后再应用
+- 修复主机拒绝或回声一次文档同步时，webview 会用旧文本覆盖用户刚输入内容的问题，改为按修正后的版本号重发
+- 修复同一文档还开着普通文本编辑器时，插件自身的编辑会把 webview 光标拽到文本编辑器光标位置的问题
+
 ## 0.1.24
 - 新增常用格式化快捷键（Ctrl+B 粗体、Ctrl+I 斜体、Ctrl+Shift+D 代码块、Ctrl+Shift+K 链接、Ctrl+Shift+T 表格等）
 - 新增 `markdownEditorOptimized.codeBlock.defaultLanguage` 设置项，可配置插入代码块时的默认语言（默认值：bash）
