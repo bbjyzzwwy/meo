@@ -10,6 +10,7 @@ An optimized markdown editor with live editing mode for VS Code.
 
 - **Live/Source modes** - Switch between clean writing and raw markdown in a single tab
 - **Toolbar formatting** - Insert headings, lists, tasks, tables, code blocks, links, images, and quotes in one click
+- **Heading numbering** - Number every heading (`1`, `1.1`, `1.1.1`) with one click, and strip the numbers with the next
 - **Floating selection menu** - Instantly apply bold, italic, strikethrough, inline code, or links on any text selection
 - **Interactive editing** - Toggle tasks, open links, find/replace, render full-screen Mermaid diagrams, and LaTeX syntax
 - **Images** - Paste images directly into notes with inline rendering and automatic path resolution

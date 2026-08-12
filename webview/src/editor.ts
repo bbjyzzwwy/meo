@@ -25,6 +25,7 @@ import { createGitDiffOverviewRulerController } from './helpers/gitDiffOverviewR
 import { createGitBlameHoverController } from './helpers/gitBlameHover';
 import { mergeConflictSourceExtensions } from './helpers/mergeConflicts';
 import { resolvedSyntaxTree, extractHeadings, extractHeadingSections } from './helpers/markdownSyntax';
+import { collectHeadingNumberingChanges } from './helpers/headingNumbering';
 import {
   sourceListBorderField,
   sourceListMarkerField,
@@ -1725,6 +1726,15 @@ export function createEditor({
     },
     getHeadings() {
       return extractHeadings(view.state);
+    },
+    toggleHeadingNumbers() {
+      const { numbered, changes } = collectHeadingNumberingChanges(view.state);
+      if (changes.length === 0) {
+        return { changed: false, numbered };
+      }
+
+      view.dispatch({ changes });
+      return { changed: true, numbered };
     },
     moveHeadingSection(sourceHeadingFrom, targetHeadingFrom, placement) {
       if (placement !== 'before' && placement !== 'after') {

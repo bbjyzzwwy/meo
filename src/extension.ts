@@ -441,16 +441,17 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   const FORMAT_COMMANDS = [
-    { suffix: 'bold',         action: 'bold' },
-    { suffix: 'italic',       action: 'italic' },
-    { suffix: 'strike',       action: 'strike' },
-    { suffix: 'inlineCode',   action: 'inlineCode' },
-    { suffix: 'link',         action: 'link' },
-    { suffix: 'table',        action: 'table', level: { cols: 3, rows: 3 } as const },
-    { suffix: 'bulletList',   action: 'bulletList' },
-    { suffix: 'numberedList', action: 'numberedList' },
-    { suffix: 'task',         action: 'task' },
-    { suffix: 'quote',        action: 'quote' },
+    { suffix: 'bold',           action: 'bold' },
+    { suffix: 'italic',         action: 'italic' },
+    { suffix: 'strike',         action: 'strike' },
+    { suffix: 'inlineCode',     action: 'inlineCode' },
+    { suffix: 'link',           action: 'link' },
+    { suffix: 'table',          action: 'table', level: { cols: 3, rows: 3 } as const },
+    { suffix: 'bulletList',     action: 'bulletList' },
+    { suffix: 'numberedList',   action: 'numberedList' },
+    { suffix: 'task',           action: 'task' },
+    { suffix: 'quote',          action: 'quote' },
+    { suffix: 'headingNumbers', action: 'headingNumbers' },
   ];
 
   for (const cmd of FORMAT_COMMANDS) {

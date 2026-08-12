@@ -54,9 +54,9 @@ const detailsOpenTagPattern = /<details\b[^>]*>/i;
 const detailsCloseTagPattern = /<\/details\s*>/i;
 const summaryTagPattern = /<summary\b[^>]*>([\s\S]*?)<\/summary\s*>/i;
 
-export function extractHeadings(state: EditorState): HeadingInfo[] {
+export function extractHeadings(state: EditorState, parseTimeout?: number): HeadingInfo[] {
   const headings: HeadingInfo[] = [];
-  const tree = resolvedSyntaxTree(state);
+  const tree = resolvedSyntaxTree(state, parseTimeout);
 
   tree.iterate({
     enter(node: any) {

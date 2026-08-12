@@ -1,4 +1,4 @@
-import { createElement, Heading, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, List, ListOrdered, ListTodo, ListTree, Hash, Code, Terminal, Quote, Minus, Table2, Link, Brackets, Image, Bold, Italic, Strikethrough, Search, Share, GitCompare } from 'lucide';
+import { createElement, Heading, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, List, ListOrdered, ListTodo, ListTree, ArrowDown01, Hash, Code, Terminal, Quote, Minus, Table2, Link, Brackets, Image, Bold, Italic, Strikethrough, Search, Share, GitCompare } from 'lucide';
 import { setImageSrcResolver, initializeImageHandling, resolveImageSrc, settleImageSrcRequest, handleSavedImagePath, handleImagePaste } from './helpers/images';
 import { createGitClient } from './helpers/gitClient';
 import { createOutlineController } from './helpers/outline';
@@ -271,6 +271,13 @@ hrBtn.dataset.action = 'hr';
 hrBtn.title = 'Horizontal Rule';
 hrBtn.appendChild(createElement(Minus, { width: 18, height: 18 }));
 
+const headingNumbersBtn = document.createElement('button');
+headingNumbersBtn.type = 'button';
+headingNumbersBtn.className = 'format-button';
+headingNumbersBtn.dataset.action = 'headingNumbers';
+headingNumbersBtn.title = 'Number Headings (click again to remove)';
+headingNumbersBtn.appendChild(createElement(ArrowDown01, { width: 18, height: 18 }));
+
 const linkBtn = document.createElement('button');
 linkBtn.type = 'button';
 linkBtn.className = 'format-button';
@@ -367,7 +374,7 @@ tableGrid.addEventListener('click', (event) => {
   editor.focus();
 });
 
-formatGroup.append(headingWrapper, bulletListBtn, numberedListBtn, taskBtn, separator, tableWrapper, codeBlockBtn, linkBtn, wikiLinkBtn, imageBtn, quoteBtn, hrBtn);
+formatGroup.append(headingWrapper, bulletListBtn, numberedListBtn, taskBtn, separator, tableWrapper, codeBlockBtn, linkBtn, wikiLinkBtn, imageBtn, quoteBtn, hrBtn, headingNumbersBtn);
 
 const rightGroup = document.createElement('div');
 rightGroup.className = 'right-group';
@@ -1410,6 +1417,10 @@ function handleExtensionMessage(message: any): void {
 
   if (message.type === 'insertFormat') {
     if (editor) {
+      if (message.action === 'headingNumbers') {
+        toggleHeadingNumbers();
+        return;
+      }
       editor.insertFormat(message.action, message.level);
       editor.focus();
     }
@@ -1751,6 +1762,12 @@ const handleFormatAction = (action: string) => {
   editor.focus();
 };
 
+const toggleHeadingNumbers = () => {
+  if (!editor) return;
+  editor.toggleHeadingNumbers();
+  editor.focus();
+};
+
 findPanelElements.findInput.addEventListener('input', () => {
   findPanelController.updateFindStatusSummary();
 });
@@ -1835,6 +1852,7 @@ headingDropdown.addEventListener('click', (event) => {
   editor.focus();
 });
 
+headingNumbersBtn.addEventListener('click', toggleHeadingNumbers);
 bulletListBtn.addEventListener('click', () => handleFormatAction('bulletList'));
 numberedListBtn.addEventListener('click', () => handleFormatAction('numberedList'));
 taskBtn.addEventListener('click', () => handleFormatAction('task'));

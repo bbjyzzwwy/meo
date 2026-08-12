@@ -130,6 +130,10 @@
       {
         "command": "markdownEditorOptimized.format.quote",
         "title": "Markdown: Insert Blockquote"
+      },
+      {
+        "command": "markdownEditorOptimized.format.headingNumbers",
+        "title": "Markdown: Toggle Heading Numbers"
       }
     ],
     "keybindings": [
