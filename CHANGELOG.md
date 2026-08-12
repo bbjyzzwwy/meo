@@ -1,5 +1,9 @@
 # Markdown Editor Optimized (MEO)
 ---
+## 0.1.26
+- 格式化快捷键新增 macOS 变体：在 macOS 上改用 Cmd（Cmd+B 粗体、Cmd+I 斜体、Cmd+Shift+D 代码块、Cmd+Shift+K 链接、Cmd+Shift+T 表格等），Windows/Linux 保持 Ctrl 不变
+- 移除行内代码的默认快捷键（原 Ctrl+`）：该键位在 macOS 上与系统的窗口切换冲突。命令仍保留在命令面板中（Markdown: Insert Inline Code），可自行绑定按键
+
 ## 0.1.25
 - 修复 SSH 远程开发时中文/日文等输入法组字被打断、拼音残留、光标跳行的问题：主机发来的文档同步、光标定位、装饰刷新等更新现在会等待输入法组字结束后再应用
 - 修复主机拒绝或回声一次文档同步时，webview 会用旧文本覆盖用户刚输入内容的问题，改为按修正后的版本号重发
