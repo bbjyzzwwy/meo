@@ -141,56 +141,61 @@
       {
         "command": "markdownEditorOptimized.format.bold",
         "key": "ctrl+b",
+        "mac": "cmd+b",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.italic",
         "key": "ctrl+i",
+        "mac": "cmd+i",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.strike",
         "key": "ctrl+shift+x",
-        "when": "markdownEditorOptimized.activeEditor"
-      },
-      {
-        "command": "markdownEditorOptimized.format.inlineCode",
-        "key": "ctrl+`",
+        "mac": "cmd+shift+x",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.codeBlock",
         "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.link",
         "key": "ctrl+shift+k",
+        "mac": "cmd+shift+k",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.table",
         "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.bulletList",
         "key": "ctrl+shift+8",
+        "mac": "cmd+shift+8",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.numberedList",
         "key": "ctrl+shift+7",
+        "mac": "cmd+shift+7",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.task",
         "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
         "when": "markdownEditorOptimized.activeEditor"
       },
       {
         "command": "markdownEditorOptimized.format.quote",
         "key": "ctrl+shift+.",
+        "mac": "cmd+shift+.",
         "when": "markdownEditorOptimized.activeEditor"
       }
     ],
