@@ -1,5 +1,10 @@
 # Markdown Editor Optimized (MEO)
 ---
+## 0.1.27
+- 新增标题编号：工具栏格式区最右侧新增按钮，点一下按层级给全文标题加序号（1、1.1、1.1.1），再点一下全部清除；也可在命令面板调用 Markdown: Toggle Heading Numbers
+- 编号从文档中最浅的标题层级开始，代码块内的 #、YAML front matter、setext 标题均不受影响；清除时兼容 1.1. 这类带末尾点的旧格式
+- 注意：标题本身以「数字 + 空格」开头时（如 `## 3 个要点`）会被识别为序号并清除
+
 ## 0.1.26
 - 格式化快捷键新增 macOS 变体：在 macOS 上改用 Cmd（Cmd+B 粗体、Cmd+I 斜体、Cmd+Shift+D 代码块、Cmd+Shift+K 链接、Cmd+Shift+T 表格等），Windows/Linux 保持 Ctrl 不变
 - 移除行内代码的默认快捷键（原 Ctrl+`）：该键位在 macOS 上与系统的窗口切换冲突。命令仍保留在命令面板中（Markdown: Insert Inline Code），可自行绑定按键
