@@ -66,7 +66,8 @@ import {
 } from './helpers/math';
 import {
   addHtmlBlockDecoration,
-  parseInlineHtmlTag,
+  classifyInlineHtmlTag,
+  sanitizeInlineTagAttributes,
   getHtmlTagWidget,
   sanitizeHtml as sanitizeHtmlBlock,
   isHtmlRenderEnabled,
@@ -815,28 +816,112 @@ function addAutolinkDecorations(builder, state, node) {
   addTrimmedUrlLinkMark(builder, urlNode.from, urlNode.to, rawUrl, href);
 }
 
+/**
+ * Find the `HTMLTag` node closing the pair opened by `node`, counting nested
+ * tags of the same name. The search stays within the opening tag's parent, so
+ * an unclosed tag simply finds nothing and stays as source text.
+ */
+function findMatchingInlineHtmlCloseTag(state, node, tagName) {
+  let depth = 1;
+  for (let sibling = node.node.nextSibling; sibling; sibling = sibling.nextSibling) {
+    if (sibling.name !== 'HTMLTag') {
+      continue;
+    }
+    const info = classifyInlineHtmlTag(state.doc.sliceString(sibling.from, sibling.to));
+    if (info?.tagName !== tagName) {
+      continue;
+    }
+    if (info.kind === 'open') {
+      depth += 1;
+    } else if (info.kind === 'close') {
+      depth -= 1;
+      if (depth === 0) {
+        return { from: sibling.from, to: sibling.to };
+      }
+    }
+  }
+  return null;
+}
+
+const inlineHtmlContentDecoCache = new Map();
+const INLINE_HTML_CONTENT_DECO_CACHE_LIMIT = 300;
+
+function getInlineHtmlContentDeco(tagName, attributes) {
+  const cacheKey = `${tagName}:${attributes}`;
+  let deco = inlineHtmlContentDecoCache.get(cacheKey);
+  if (deco) {
+    inlineHtmlContentDecoCache.delete(cacheKey);
+    inlineHtmlContentDecoCache.set(cacheKey, deco);
+    return deco;
+  }
+
+  const domAttributes = sanitizeInlineTagAttributes(tagName, attributes);
+  domAttributes.class = domAttributes.class
+    ? `meo-md-html-inline ${domAttributes.class}`
+    : 'meo-md-html-inline';
+  deco = Decoration.mark({ tagName, attributes: domAttributes });
+
+  inlineHtmlContentDecoCache.set(cacheKey, deco);
+  if (inlineHtmlContentDecoCache.size > INLINE_HTML_CONTENT_DECO_CACHE_LIMIT) {
+    const oldest = inlineHtmlContentDecoCache.keys().next().value;
+    if (oldest) {
+      inlineHtmlContentDecoCache.delete(oldest);
+    }
+  }
+  return deco;
+}
+
 function addHtmlTagDecoration(builder, state, node, activeLines) {
   if (!isHtmlRenderEnabled()) {
     return;
   }
-  const line = state.doc.lineAt(node.from);
-  if (activeLines.has(line.number)) {
+  const info = classifyInlineHtmlTag(state.doc.sliceString(node.from, node.to));
+  if (!info) {
     return;
   }
-  if (overlapsSelection(state, node.from, node.to)) {
+
+  // Standalone tags (<br>, <hr>, <span/>) render on their own.
+  if (info.kind === 'void' || info.kind === 'selfClosing') {
+    if (activeLines.has(state.doc.lineAt(node.from).number)) {
+      return;
+    }
+    if (overlapsSelection(state, node.from, node.to)) {
+      return;
+    }
+    builder.push(
+      Decoration.replace({
+        widget: getHtmlTagWidget(info.tagName, info.attributes),
+        inclusive: false,
+      }).range(node.from, node.to),
+    );
     return;
   }
-  const rawText = state.doc.sliceString(node.from, node.to);
-  const parsed = parseInlineHtmlTag(rawText);
-  if (!parsed) {
+
+  // A closing tag is decorated by the opening tag that owns it.
+  if (info.kind !== 'open') {
     return;
   }
-  const widget = getHtmlTagWidget(parsed.tagName, parsed.attributes, parsed.content);
-  builder.push(
-    Decoration.replace({
-      widget,
-      inclusive: false,
-    }).range(node.from, node.to),
+
+  const closeTag = findMatchingInlineHtmlCloseTag(state, node, info.tagName);
+  if (!closeTag) {
+    return;
+  }
+  if (rangeTouchesActiveLine(state, node.from, closeTag.to, activeLines)) {
+    return;
+  }
+  if (overlapsSelection(state, node.from, closeTag.to)) {
+    return;
+  }
+
+  // Hide both tags and style the text between them, so markdown, links and
+  // math inside the element keep rendering as usual.
+  addRange(builder, node.from, node.to, markerDeco);
+  addRange(builder, closeTag.from, closeTag.to, markerDeco);
+  addRange(
+    builder,
+    node.to,
+    closeTag.from,
+    getInlineHtmlContentDeco(info.tagName, info.attributes),
   );
 }
 

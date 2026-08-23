@@ -2662,39 +2662,47 @@ body {
 }
 
 /* Preserve inline styling from sanitized HTML elements */
-.cm-editor .meo-md-html-inline sup {
+.cm-editor .meo-md-html-inline sup,
+.cm-editor sup.meo-md-html-inline {
   vertical-align: super;
   font-size: smaller;
 }
 
-.cm-editor .meo-md-html-inline sub {
+.cm-editor .meo-md-html-inline sub,
+.cm-editor sub.meo-md-html-inline {
   vertical-align: sub;
   font-size: smaller;
 }
 
-.cm-editor .meo-md-html-inline mark {
+.cm-editor .meo-md-html-inline mark,
+.cm-editor mark.meo-md-html-inline {
   background-color: var(--vscode-editor-findMatchHighlightBackground);
   color: inherit;
 }
 
-.cm-editor .meo-md-html-inline ins {
+.cm-editor .meo-md-html-inline ins,
+.cm-editor ins.meo-md-html-inline {
   text-decoration: underline;
 }
 
-.cm-editor .meo-md-html-inline del {
+.cm-editor .meo-md-html-inline del,
+.cm-editor del.meo-md-html-inline {
   text-decoration: line-through;
 }
 
-.cm-editor .meo-md-html-inline small {
+.cm-editor .meo-md-html-inline small,
+.cm-editor small.meo-md-html-inline {
   font-size: smaller;
 }
 
-.cm-editor .meo-md-html-inline abbr[title] {
+.cm-editor .meo-md-html-inline abbr[title],
+.cm-editor abbr[title].meo-md-html-inline {
   text-decoration: underline dotted;
   cursor: help;
 }
 
-.cm-editor .meo-md-html-inline code {
+.cm-editor .meo-md-html-inline code,
+.cm-editor code.meo-md-html-inline {
   font-family: var(--vscode-editor-font-family, monospace);
   background-color: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.15));
   padding: 0.05em 0.3em;

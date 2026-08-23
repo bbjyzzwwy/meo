@@ -9,7 +9,7 @@ import DOMPurify from 'dompurify';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PURIFY_CONFIG: any = {
   ALLOWED_TAGS: [
-    'div', 'span', 'p', 'br', 'hr',
+    'div', 'span', 'p', 'br', 'hr', 'wbr',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'ul', 'ol', 'li', 'dl', 'dt', 'dd',
     'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
@@ -153,21 +153,118 @@ export class HtmlBlockWidget extends WidgetType {
 }
 
 // ============================================================================
+// Inline HTML Tags
+// ============================================================================
+
+/** Void HTML elements: never have content or a closing tag. */
+const VOID_INLINE_TAGS = new Set(['br', 'hr', 'wbr']);
+
+/** Inline HTML tags we can safely render as styled elements. */
+const SAFE_INLINE_TAGS = new Set([
+  'span', 'sup', 'sub', 'mark', 'ins', 'del',
+  'small', 'abbr', 'dfn', 'q', 'time', 'var', 'cite', 'data', 'samp',
+  'b', 'i', 'u', 's', 'em', 'strong', 'code',
+  ...VOID_INLINE_TAGS,
+]);
+
+const INLINE_TAG_ALLOWED_ATTR = [
+  'class', 'id', 'style', 'title', 'lang', 'dir', 'href', 'target', 'rel',
+  'cite', 'datetime', 'data-*',
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function inlineTagPurifyConfig(tagName: string): any {
+  return {
+    ALLOWED_TAGS: [tagName],
+    ALLOWED_ATTR: INLINE_TAG_ALLOWED_ATTR,
+    ALLOW_DATA_ATTR: true,
+    FORBID_TAGS: ['script', 'style', 'object', 'embed', 'form', 'input', 'button'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onfocus', 'onblur',
+      'onchange', 'onsubmit', 'onkeydown', 'onkeypress', 'onkeyup', 'ondblclick',
+      'oncontextmenu', 'onmousedown', 'onmouseup', 'onmousemove',
+    ],
+  };
+}
+
+/**
+ * What an inline `HTMLTag` node is: the opening half of a pair, the closing
+ * half, a void element, or a self-closed element.
+ */
+export type InlineHtmlTagKind = 'open' | 'close' | 'void' | 'selfClosing';
+
+export interface InlineHtmlTagInfo {
+  tagName: string;
+  attributes: string;
+  kind: InlineHtmlTagKind;
+}
+
+const inlineTagRe = /^<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*?)(\s*\/)?\s*>$/;
+
+/**
+ * Classify a single inline HTML tag. The markdown parser emits the opening and
+ * closing halves of `<sup>x</sup>` as two separate nodes, so each is classified
+ * on its own and paired up by the caller.
+ * Returns null for anything outside the safe inline tag set.
+ */
+export function classifyInlineHtmlTag(text: string): InlineHtmlTagInfo | null {
+  const match = inlineTagRe.exec(text.trim());
+  if (!match) return null;
+
+  const [, closingSlash, rawTagName, rawAttributes, selfClosingSlash] = match;
+  const tagName = rawTagName.toLowerCase();
+  if (!SAFE_INLINE_TAGS.has(tagName)) return null;
+
+  const attributes = rawAttributes.trim();
+
+  if (VOID_INLINE_TAGS.has(tagName)) {
+    // `</br>` is not a thing; treat it as plain text.
+    return closingSlash ? null : { tagName, attributes, kind: 'void' };
+  }
+  if (closingSlash) {
+    return { tagName, attributes: '', kind: 'close' };
+  }
+  return { tagName, attributes, kind: selfClosingSlash ? 'selfClosing' : 'open' };
+}
+
+/**
+ * Run a tag's raw attribute text through the sanitizer and hand back what
+ * survived, so callers can apply it to an element they build themselves.
+ */
+export function sanitizeInlineTagAttributes(tagName: string, attributes: string): Record<string, string> {
+  if (!attributes) return {};
+
+  const fragment = DOMPurify.sanitize(`<${tagName} ${attributes}></${tagName}>`, {
+    ...inlineTagPurifyConfig(tagName),
+    RETURN_DOM_FRAGMENT: true,
+  }) as unknown as DocumentFragment;
+
+  const element = fragment.firstElementChild;
+  if (!element) return {};
+
+  const sanitized: Record<string, string> = {};
+  for (const attribute of Array.from(element.attributes)) {
+    sanitized[attribute.name] = attribute.value;
+  }
+  return sanitized;
+}
+
+// ============================================================================
 // Inline HTML Tag Widget
 // ============================================================================
 
 const inlineTagWidgetCache = new Map<string, HtmlTagWidget>();
 const INLINE_TAG_CACHE_LIMIT = 300;
 
-export function getHtmlTagWidget(tagName: string, attributes: string, content: string): HtmlTagWidget {
-  const cacheKey = `${tagName}:${attributes}:${content}`;
+/** Widget for tags that stand alone: void elements and self-closed elements. */
+export function getHtmlTagWidget(tagName: string, attributes: string): HtmlTagWidget {
+  const cacheKey = `${tagName}:${attributes}`;
   let widget = inlineTagWidgetCache.get(cacheKey);
   if (widget) {
     inlineTagWidgetCache.delete(cacheKey);
     inlineTagWidgetCache.set(cacheKey, widget);
     return widget;
   }
-  widget = new HtmlTagWidget(tagName, attributes, content);
+  widget = new HtmlTagWidget(tagName, attributes);
   inlineTagWidgetCache.set(cacheKey, widget);
   if (inlineTagWidgetCache.size > INLINE_TAG_CACHE_LIMIT) {
     const oldest = inlineTagWidgetCache.keys().next().value;
@@ -178,57 +275,32 @@ export function getHtmlTagWidget(tagName: string, attributes: string, content: s
   return widget;
 }
 
-/** Inline HTML tags we can safely render as styled elements. */
-const SAFE_INLINE_TAGS = new Set([
-  'span', 'sup', 'sub', 'mark', 'ins', 'del',
-  'small', 'abbr', 'dfn', 'q', 'time', 'var', 'cite', 'data', 'samp',
-  'b', 'i', 'u', 's', 'em', 'strong', 'code',
-]);
-
-function buildInlineTagHtml(tagName: string, attributes: string, content: string): string {
-  const attrStr = attributes ? ` ${attributes}` : '';
-  if (content) {
-    return `<${tagName}${attrStr}>${content}</${tagName}>`;
-  }
-  return `<${tagName}${attrStr} />`;
-}
-
 export class HtmlTagWidget extends WidgetType {
   private tagName: string;
   private attributes: string;
-  private content: string;
 
-  constructor(tagName: string, attributes: string, content: string) {
+  constructor(tagName: string, attributes: string) {
     super();
     this.tagName = tagName;
     this.attributes = attributes;
-    this.content = content;
   }
 
   eq(other: WidgetType): boolean {
     return (
       other instanceof HtmlTagWidget &&
       other.tagName === this.tagName &&
-      other.attributes === this.attributes &&
-      other.content === this.content
+      other.attributes === this.attributes
     );
   }
 
   toDOM(): HTMLElement {
     const wrapper = document.createElement('span');
     wrapper.className = 'meo-md-html-inline';
-    const html = buildInlineTagHtml(this.tagName, this.attributes, this.content);
-    wrapper.innerHTML = DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [this.tagName],
-      ALLOWED_ATTR: ['class', 'id', 'style', 'title', 'lang', 'dir', 'href', 'target', 'rel',
-        'cite', 'datetime', 'data-*'],
-      ALLOW_DATA_ATTR: true,
-      FORBID_TAGS: ['script', 'style', 'object', 'embed', 'form', 'input', 'button'],
-      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onfocus', 'onblur',
-        'onchange', 'onsubmit', 'onkeydown', 'onkeypress', 'onkeyup', 'ondblclick',
-        'oncontextmenu', 'onmousedown', 'onmouseup', 'onmousemove',
-      ],
-    }) as unknown as string;
+    const attrStr = this.attributes ? ` ${this.attributes}` : '';
+    wrapper.innerHTML = DOMPurify.sanitize(
+      `<${this.tagName}${attrStr} />`,
+      inlineTagPurifyConfig(this.tagName),
+    ) as unknown as string;
     return wrapper;
   }
 
@@ -246,111 +318,6 @@ const detailsOpenTagRe = /<details\b[^>]*>/i;
 /** Check if a raw HTML block text contains a <details> tag (already handled elsewhere). */
 export function isDetailsBlock(rawHtml: string): boolean {
   return detailsOpenTagRe.test(rawHtml);
-}
-
-/**
- * Parse an inline HTML tag from text starting with `<`.
- * Returns null if the text doesn't look like a safe inline tag.
- */
-export function parseInlineHtmlTag(text: string): {
-  tagName: string;
-  attributes: string;
-  content: string;
-  isSelfClosing: boolean;
-  fullLength: number;
-} | null {
-  // Match opening tag: <tagname attr1="val1" ...>
-  const openTagRe = /^<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*?)(\s*\/)?\s*>/;
-  const match = openTagRe.exec(text);
-  if (!match) return null;
-
-  const [, isClosing, rawTagName, attributes, selfClosing] = match;
-  const tagName = rawTagName.toLowerCase();
-
-  // We only render safe inline tags
-  if (!SAFE_INLINE_TAGS.has(tagName)) return null;
-
-  // Self-closing tag like <br/>
-  if (selfClosing) {
-    return {
-      tagName,
-      attributes: attributes.trim(),
-      content: '',
-      isSelfClosing: true,
-      fullLength: match[0].length,
-    };
-  }
-
-  // Closing tag — not rendered on its own
-  if (isClosing) return null;
-
-  // Find matching closing tag
-  const closeTag = `</${tagName}>`;
-  const restText = text.slice(match[0].length);
-  const closeIndex = findMatchingCloseTag(restText, tagName);
-
-  if (closeIndex === -1) {
-    // No closing tag found — treat as self-closing (e.g. malformed HTML)
-    return {
-      tagName,
-      attributes: attributes.trim(),
-      content: '',
-      isSelfClosing: true,
-      fullLength: match[0].length,
-    };
-  }
-
-  const content = restText.slice(0, closeIndex);
-  const fullLength = match[0].length + closeIndex + closeTag.length;
-
-  return {
-    tagName,
-    attributes: attributes.trim(),
-    content,
-    isSelfClosing: false,
-    fullLength,
-  };
-}
-
-/**
- * Find the position of a matching closing tag for a given tag name,
- * handling nested elements of the same type.
- */
-function findMatchingCloseTag(text: string, tagName: string): number {
-  const openRe = new RegExp(`<${tagName}\\b[^>]*>`, 'gi');
-  const closeRe = new RegExp(`<\\/${tagName}\\s*>`, 'gi');
-  let depth = 1;
-  let searchPos = 0;
-
-  while (depth > 0) {
-    // Find next occurrence of either an open or close tag
-    openRe.lastIndex = searchPos;
-    closeRe.lastIndex = searchPos;
-
-    const openMatch = openRe.exec(text);
-    const closeMatch = closeRe.exec(text);
-
-    const openIndex = openMatch ? openMatch.index : Infinity;
-    const closeIndex = closeMatch ? closeMatch.index : Infinity;
-
-    if (openIndex === Infinity && closeIndex === Infinity) {
-      // No more tags — unbalanced
-      return -1;
-    }
-
-    if (openIndex < closeIndex) {
-      depth += 1;
-      searchPos = openIndex + openMatch![0].length;
-    } else {
-      depth -= 1;
-      if (depth === 0) {
-        return closeIndex;
-      }
-      searchPos = closeIndex + closeMatch![0].length;
-    }
-  }
-
-  return -1;
 }
 
 // ============================================================================
@@ -444,7 +411,7 @@ export function addHtmlBlockDecoration(input: HtmlBlockDecorationInput): boolean
 
   // For single-line blocks with no block-level tags, skip (let inline handling take over)
   if (startLine === endLine) {
-    const hasBlockTags = /<(div|p|h[1-6]|table|ul|ol|dl|blockquote|pre|section|article|aside|header|footer|nav|main|figure|video|audio|details)\b/i.test(rawHtml);
+    const hasBlockTags = /<(div|p|h[1-6]|br|hr|table|ul|ol|dl|blockquote|pre|section|article|aside|header|footer|nav|main|figure|video|audio|details)\b/i.test(rawHtml);
     if (!hasBlockTags) return false;
   }
 

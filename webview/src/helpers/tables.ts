@@ -5,6 +5,7 @@ import { undo, redo } from '@codemirror/commands';
 import { ImageWidget } from './images';
 import { emojiData } from './emoji';
 import { parseKbdTagAt } from './kbd';
+import { classifyInlineHtmlTag, sanitizeInlineTagAttributes } from './htmlBlocks';
 import { createLatexMathElement, parseLatexMathAt } from './math';
 import { isPrimaryModifierPointerClick } from './linkNavigation';
 import { wikiLinkScheme } from './wikiLinks';
@@ -122,6 +123,8 @@ function isRedoShortcut(event) {
 const tableInlineSchemeRe = /^[a-z][a-z0-9+.-]*:/i;
 const tableInlineRawUrlRe = /^(?:[a-z][a-z0-9+.-]*:\/\/|mailto:|file:|www\.)[^\s<]+/i;
 const tableInlineEmojiShortcodeRe = /^:([a-zA-Z0-9_+-]+):/;
+const tableInlineBreakTagAtRe = /^<br\s*\/?>/i;
+const tableInlineHtmlOpenTagAtRe = /^<[a-zA-Z][a-zA-Z0-9]*\b[^>]*>/;
 const tableInlineEscapableChars = new Set(['\\', '*', '_', '~', '`', '[', ']', '(', ')', '!', '|', '<', '>']);
 
 function isTableInlineWhitespaceOnly(text) {
@@ -436,6 +439,52 @@ function parseTableInlineRawUrl(text, index) {
   };
 }
 
+function parseTableInlineBreakTag(text, index) {
+  if (text[index] !== '<' || isTableInlineEscaped(text, index)) return null;
+  const match = tableInlineBreakTagAtRe.exec(text.slice(index));
+  if (!match) return null;
+  return { nextIndex: index + match[0].length };
+}
+
+function findTableInlineHtmlCloseTag(text, searchFrom, tagName) {
+  const tagRe = new RegExp(`<\\/?${tagName}\\b[^>]*>`, 'gi');
+  tagRe.lastIndex = searchFrom;
+  let depth = 1;
+  for (let match = tagRe.exec(text); match; match = tagRe.exec(text)) {
+    if (isTableInlineEscaped(text, match.index)) continue;
+    const info = classifyInlineHtmlTag(match[0]);
+    if (info?.tagName !== tagName) continue;
+    if (info.kind === 'open') {
+      depth += 1;
+    } else if (info.kind === 'close') {
+      depth -= 1;
+      if (depth === 0) {
+        return { contentEnd: match.index, nextIndex: match.index + match[0].length };
+      }
+    }
+  }
+  return null;
+}
+
+function parseTableInlineHtmlTag(text, index) {
+  if (text[index] !== '<' || isTableInlineEscaped(text, index)) return null;
+  const openMatch = tableInlineHtmlOpenTagAtRe.exec(text.slice(index));
+  if (!openMatch) return null;
+  const info = classifyInlineHtmlTag(openMatch[0]);
+  if (!info || info.kind !== 'open') return null;
+
+  const contentStart = index + openMatch[0].length;
+  const closeTag = findTableInlineHtmlCloseTag(text, contentStart, info.tagName);
+  if (!closeTag) return null;
+
+  return {
+    tagName: info.tagName,
+    attributes: info.attributes,
+    content: text.slice(contentStart, closeTag.contentEnd),
+    nextIndex: closeTag.nextIndex
+  };
+}
+
 function parseTableInlineEmojiShortcode(text, index) {
   if (text[index] !== ':' || isTableInlineEscaped(text, index)) return null;
   const match = tableInlineEmojiShortcodeRe.exec(text.slice(index));
@@ -508,6 +557,30 @@ function appendTableInlinePreviewNodes(parent: HTMLElement, text: string, option
         parent.appendChild(el);
       }
       i = kbd.nextIndex;
+      continue;
+    }
+
+    const lineBreak = parseTableInlineBreakTag(text, i);
+    if (lineBreak) {
+      flushBuffer();
+      parent.appendChild(document.createElement('br'));
+      i = lineBreak.nextIndex;
+      continue;
+    }
+
+    const htmlTag = parseTableInlineHtmlTag(text, i);
+    if (htmlTag) {
+      flushBuffer();
+      const el = document.createElement(htmlTag.tagName);
+      const attributes = sanitizeInlineTagAttributes(htmlTag.tagName, htmlTag.attributes);
+      for (const [name, value] of Object.entries(attributes)) {
+        if (name === 'class') continue;
+        el.setAttribute(name, value);
+      }
+      el.className = attributes.class ? `meo-md-html-inline ${attributes.class}` : 'meo-md-html-inline';
+      appendTableInlinePreviewNodes(el, htmlTag.content, options);
+      parent.appendChild(el);
+      i = htmlTag.nextIndex;
       continue;
     }
 
