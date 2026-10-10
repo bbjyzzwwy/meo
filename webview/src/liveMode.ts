@@ -2244,7 +2244,9 @@ function addFallbackTableDecorations(builder, state, tree, parsedTableRanges, me
     const from = state.doc.line(block.startLineNo).from;
     const to = state.doc.line(block.endLineNo).to;
     if (overlapsParsedTableRange(from, to, parsedTableRanges)) continue;
-    if (isInsideCodeBlock(tree, from)) continue;
+    // Resolve at content, since leading indentation may be outside CodeBlock.
+    const contentFrom = from + state.doc.line(block.startLineNo).text.search(/\S/);
+    if (isInsideCodeBlock(tree, contentFrom)) continue;
     if (rangeOverlapsMermaidColonBlock(mermaidColonBlocks, from, to)) continue;
     addTableDecorationsForLineRange(builder, state, block.startLineNo, block.endLineNo);
   }

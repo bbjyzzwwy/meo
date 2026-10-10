@@ -122,7 +122,8 @@ function detectFallbackTableBlocks(
       lineNo = endLineNo;
       continue;
     }
-    if (isInsideCodeBlock(tree, from)) {
+    // Resolve at content, since leading indentation may be outside CodeBlock.
+    if (isInsideCodeBlock(tree, from + headerText.search(/\S/))) {
       lineNo = endLineNo;
       continue;
     }

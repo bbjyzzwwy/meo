@@ -72,7 +72,8 @@ interface TableRange {
 
 const sourceTableHeaderLineDeco = Decoration.line({ class: 'meo-md-source-table-header-line' });
 const sourceTableHeaderCellDeco = Decoration.mark({ class: 'meo-md-source-table-header-cell' });
-const tableDelimiterRegex = /^\|?\s*[:]?\-+[:]?\s*(\|\s*[:]?\-+[:]?\s*)*\|?$/;
+// List-item tables retain their indentation when read from the source document.
+const tableDelimiterRegex = /^\s*\|?\s*[:]?\-+[:]?\s*(\|\s*[:]?\-+[:]?\s*)*\|?$/;
 const tableCellSelector = 'th[data-table-row][data-table-col], td[data-table-row][data-table-col]';
 const tableControlSelector = '.meo-md-html-col-controls, .meo-md-html-row-controls, .meo-md-html-col-btn, .meo-md-html-row-btn';
 const minColumnWidthCh = 10;
@@ -1974,7 +1975,8 @@ function buildSourceTableHeaderDecorations(state) {
     const headerText = state.doc.sliceString(headerLine.from, headerLine.to);
     if (!isTableContentLine(headerText)) continue;
     if (overlapsParsedTableRange(headerLine.from, delimiterLine.to, parsedTableRanges)) continue;
-    if (isPositionInsideCodeBlock(tree, headerLine.from)) continue;
+    // The indentation itself may sit outside the CodeBlock syntax node.
+    if (isPositionInsideCodeBlock(tree, headerLine.from + headerText.search(/\S/))) continue;
 
     const parsedHeaderLine = parseTableLine(headerLineNo, headerLine.from, headerLine.to, headerText);
     addSourceHeaderLineDecorations(ranges, parsedHeaderLine);
